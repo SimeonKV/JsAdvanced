@@ -1,55 +1,51 @@
-function attachEvents() {
-    const refreshBttn = document.querySelector('input#refresh');
-    refreshBttn.addEventListener('click',loadMesseges);
-
-    const submitBttn = document.querySelector('input#submit');
-    submitBttn.addEventListener('click',onSubmit);
-    loadMesseges();
-}
-
-const author = document.querySelector('input[name=author]');
-const content = document.querySelector('input[name=content]');
+const refreshButton = document.querySelector('#refresh');
+const submitButton = document.querySelector('#submit');
 const textArea = document.querySelector('textarea');
 
-async function loadMesseges(){
-    const url = 'http://localhost:3030/jsonstore/messenger';
-    
 
-    const response = await fetch(url);
-    const dataJson = await response.json();
-    textArea.value = '';
+refreshButton.addEventListener('click',onRefresh);
+submitButton.addEventListener('click',onSubmit);
 
-  
+async function onRefresh(e){
+     e.preventDefault();
 
- 
-    Object.values(dataJson)
-    .map(entry => `${entry.author}: ${entry.content}\n`)
-    .forEach(entry => textArea.value += entry);
+     const url = 'http://localhost:3030/jsonstore/messenger';
+     const getResponse = await fetch(url);
+     const getResult = await getResponse.json();
+
+     textArea.value = '';
+     Object.values(getResult).forEach(row =>{
+         textArea.value += createStringOutput(row)
+     });
+
 }
 
-async function onSubmit(){
-   const url = 'http://localhost:3030/jsonstore/messenger';
-    
+async function onSubmit(e){
+     e.preventDefault();
+     let author =  document.querySelector(`input[name='author']`);
+     let content = document.querySelector(`input[name='content']`);
 
 
-   const postObj = {
-       method: 'post',
-       headers: {
-           'Content-Type' : 'application/json'
-       },
-       body : JSON.stringify( {
-           author : author.value,
-           content : content.value
-       }
-       )
-   }
+     const url = 'http://localhost:3030/jsonstore/messenger';
+     const postReponse = await fetch(url,{
+          method: 'Post',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            author : author.value,
+            content : content.value
+          })
+     });
 
-   const response = await fetch(url,postObj);
+     const postResult = await postReponse.json();
+     textArea.value += createStringOutput(postResult);
 
-   loadMesseges();
-   author.value = '';
-   content.value = '';
+     author.value = '';
+     content.value = '';
 }
 
+function createStringOutput(data){
+    const author = data.author;
+    const content = data.content;
 
-attachEvents();
+    return `${author}: ${content}\n`;
+}

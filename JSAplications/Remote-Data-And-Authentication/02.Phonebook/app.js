@@ -1,88 +1,116 @@
-const ulPhonebook = document.querySelector('ul#phonebook');
-const personInput = document.querySelector('#person');
-const phoneInput = document.querySelector('#phone');
+const loadButton = document.querySelector('#btnLoad');
+const createButton = document.querySelector('#btnCreate');
+const ulPhoneBook = document.querySelector('#phonebook');
+
+loadButton.addEventListener('click', onLoad);
+createButton.addEventListener('click', onCreate);
 
 
-function attachEvents() {
-    const loadButton = document.querySelector('button#btnLoad');
-    loadButton.addEventListener('click', loadContacts);
+async function onLoad(e) {
+	e.preventDefault();
 
-    const createButton = document.querySelector('button#btnCreate');
-    createButton.addEventListener('click',createContact);
+	const url = 'http://localhost:3030/jsonstore/phonebook';
+	const getResponse = await fetch(url);
+	const getResult = await getResponse.json();
 
-    ulPhonebook.addEventListener('click',deleteContact);
-    
-
-    
-    loadContacts();
+	ulPhoneBook.replaceChildren('');
+	Object.values(getResult).forEach(row => {
+		ulPhoneBook.appendChild(createHTMLOuput(row));
+	});
 }
 
-const urls = {
-    get : 'http://localhost:3030/jsonstore/phonebook',
-    post : 'http://localhost:3030/jsonstore/phonebook',
-    delete : 'http://localhost:3030/jsonstore/phonebook/'
+async function onCreate(e) {
+	e.preventDefault();
+
+	const name = document.querySelector('#person');
+	const phone = document.querySelector('#phone');
+
+
+	const url = 'http://localhost:3030/jsonstore/phonebook';
+	const postResponse = await fetch(url, {
+		method: 'Post',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			person: name.value.trim(),
+			phone: phone.value.trim()
+		})
+	});
+	const postResult = await postResponse.json();
+	ulPhoneBook.appendChild(createHTMLOuput(postResult));
+
+	name.value = '';
+	phone.value = '';
+}
+
+async function onDelete(e) {
+	e.preventDefault();
+	const parentElement = e.currentTarget.closest('.person');
+	const id = parentElement.dataset.id;
+
+	const url = `http://localhost:3030/jsonstore/phonebook/${id}`
+
+	try {
+
+		const deleteResponse = await fetch(url, {
+			method: 'delete'
+		});
+
+		if (deleteResponse.status !== 200) {
+			const error = await deleteResponse.json();
+			throw new Error(error.message);
+		} else {
+			parentElement.remove();
+		}
+
+	} catch (error) {
+		alert(error.message);
+	}
+
+
 }
 
 
-async function loadContacts() {  
-  const data = await loadData();
-  displayContacts(data);
-  console.log(data);
+function createHTMLOuput(data) {
+	const deleteButton = createElement('button', {
+		class: 'delete'
+	}, 'Delete');
+	deleteButton.addEventListener('click', onDelete);
 
+	const liElement = createElement('li', {
+		class: 'person'
+	}, `${data.person} : ${data.phone}		`, deleteButton);
+	liElement.dataset.id = data._id;
+
+	return liElement;
 }
 
-async function loadData() {
-    const response = await fetch(urls.get);
-    return  response.json();
 
+function createElement(elementTag, attributes, text, ...params) {
+	const element = document.createElement(elementTag);
+	const arguments = [...params];
+
+	if (text) {
+		if (elementTag === 'input' || elementTag === 'textarea') {
+			element.value = text;
+		} else {
+			element.textContent = text;
+		}
+	}
+
+	if (arguments.length > 0) {
+		element.append(...arguments);
+	}
+
+
+	if (isObjectEmpty(attributes)) {
+		Object.keys(attributes).forEach(key => element.setAttribute(key, attributes[key]));
+	}
+
+	return element;
 }
 
-function displayContacts(data){
-ulPhonebook.replaceChildren('');
-
-Object.values(data).forEach(entry => {
-const liElement = document.createElement('li');
-const buttonDelete = document.createElement('button');
-buttonDelete.textContent = '[Delete]';
-buttonDelete.setAttribute('data-id',entry._id);
-liElement.textContent = `${entry.person}: ${entry.phone} `;
-liElement.appendChild(buttonDelete);
-
-ulPhonebook.appendChild(liElement);
-});
-
+function isObjectEmpty(obj) {
+	return Object.keys(obj).length;
 }
-
-async function createContact(){
-   const contactInfo = {
-       person: personInput.value,
-       phone: phoneInput.value
-   }
-
-   const postObj = {
-       method : 'post',
-       headers : {'Content-Type' : 'application/json'},
-       body: JSON.stringify(contactInfo)
-   }
-
-   await fetch(urls.post,postObj);
-   personInput.value = '';
-   phoneInput.value = '';
-
-}
-
-async function deleteContact(event) {
-    const id = event.target.dataset.id;
-
-    if(id === undefined){
-        return;
-    }
-
-    await fetch(`${urls.delete}${id}`,{
-        method : 'delete'
-    });
-
-    loadContacts();
-}
-
-attachEvents();
